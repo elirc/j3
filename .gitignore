@@ -1,0 +1,3 @@
+out/
+data/bank.snapshot.txt
+data/.bank-*.tmp

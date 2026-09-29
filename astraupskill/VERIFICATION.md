@@ -1,0 +1,17 @@
+# Verification record and remaining boundaries
+
+This project was improved and tested in an isolated copy before applying a finite reviewed delivery to its original folder. Existing account data, transaction data, compiled artifacts, and Git history are not included in the delivery manifest. The central implementation report and project manifest `d0778f38946f` record the changed files, backups, checks, and hashes.
+
+The compiler was Microsoft OpenJDK 17.0.10. The runner compiled with `--release 17 -Xlint:all`. As with the previous Java project, restricted compiler access produced a resource-close error; reviewed full-access verification succeeded. The test result is based on that successful compilation and execution, not on ignoring the failed tool invocation.
+
+Six initial regression checks failed against the original source, covering escaped mutable state, retained caller references, duplicate account identity, orphan history, silent amount rounding, and invalid negative balances. The final suite passed **28 Java regression tests**. These include all outward account-copy paths, snapshot isolation, model guards, duplicate transaction IDs, transfer reference validation, conservation and paired history, rejected transfer preservation, 64 competing withdrawals, concurrent snapshot capture, rename behavior, restricted deletion, legacy migration, corruption and truncation rejection, real temporary-file replacement, and failure cleanup.
+
+The separate orchestration script passed **seven CLI scenarios in new Java processes**, for **35 checks total**. It verified create/reload, persisted balances and paired transfer history, precision rejection, rename persistence, protected deletion and confirmation, EOF during an incomplete account prompt, and byte preservation on corrupt startup. The project runner executes the 28 Java cases; central logs and CLI evidence live under `astra-remaining-improvements/checks/j3/`.
+
+These results establish local simulator behavior. No HTTP server, browser, database, authenticated owner model, external bank connection, or real transfer was involved. The synchronization boundary is one `BankService` instance. Two independent services or processes can still race when saving the same file, and the file format has no compare-and-swap version protocol.
+
+Commands mutate service memory before the CLI saves. Success is printed only after saving, and IOException ends the CLI, but the service itself has no transactional persistence dependency or rollback mechanism. Power-loss durability and filesystems without atomic replacement support were not established. Unsupported atomic replacement fails visibly; the implementation does not silently fall back to a partial overwrite.
+
+Loaded data is checked for valid fields, duplicate IDs, references, header, and record counts. It is not fully reconciled against historical balances, and the footer is not a checksum or tamper-proof signature. Transfer records still lack a shared operation ID. Those limitations are explicit practice topics rather than hidden claims of completeness.
+
+Migration leaves legacy files unchanged and makes the first successfully written snapshot authoritative. Old application binaries do not understand that new authority; use the delivered source/runner and do not alternate old and new programs against the same directory. The CLI currently reports failures as text without a structured nonzero exit contract. Review these boundaries before adapting this foundation into a multi-user CRUD web application.

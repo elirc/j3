@@ -6,10 +6,10 @@
 |---|---|
 | `Money` as `BigDecimal` with an enforced scale of 2 | `decimal` with `HasPrecision(18, 2)` in the model builder; enforce the scale in the value object (`decimal.Round(v, 2) == v` or throw) because `decimal` itself allows 28 digits |
 | the detached-copy rule (callers get copies, never the stored object) | an `AsNoTracking()` read model for queries; a tracked entity only inside the command that changes it. The Java course hand-copies to get what EF gives you by choosing the tracking mode |
-| the transfer pair (debit + credit) as one unit | two tracked changes and one `SaveChangesAsync()` inside `BeginTransactionAsync()`, with a shared `TransferId` (a `Guid`) on both ledger rows, which is what practice exercise 1 asks for |
-| save the snapshot before publishing the new balance | the same order: `SaveChangesAsync()` first, then update any in-memory read model or publish an event. Never mutate the cached balance before the commit returns |
-| the file-based stale-write check | `[ConcurrencyCheck] int Version` on `Account`; `DbUpdateConcurrencyException` becomes the "reload and retry" message |
-| closing an account instead of deleting history | `ClosedAt DateTime?` plus a global query filter; ledger rows keep their foreign key |
+| the transfer pair (debit + credit) as one unit | two tracked changes and one `SaveChangesAsync()` inside `BeginTransactionAsync()`, with a shared `TransferId` (a `Guid`) on both ledger rows, which is what practice exercise 4 asks for |
+| commit before publish (this CLI does the reverse: it mutates memory, then saves; practice exercise 6) | `SaveChangesAsync()` first, then update any in-memory read model or publish an event. Never mutate the cached balance before the commit returns |
+| the stale-write check this app lacks (two sessions can overwrite each other; practice exercise 3) | `[ConcurrencyCheck]` or `[Timestamp]` on a `Version` property of `Account`; `DbUpdateConcurrencyException` becomes the "reload and retry" message |
+| closing an account instead of deleting history (practice exercise 7) | `ClosedAt DateTime?` plus a global query filter; ledger rows keep their foreign key |
 
 ## The gap the course names, in C#
 

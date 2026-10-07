@@ -1,8 +1,16 @@
 # Regression tests that expose ownership and consistency failures
 
-Run `powershell -NoProfile -ExecutionPolicy Bypass -File .\run.ps1 -Test`. The Java 17 runner compiles production and test sources with `--release 17 -Xlint:all`. The dependency-free harness reports each named case and exits nonzero on failure. It runs 28 cases; the delivery's separate CLI orchestration adds seven more scenarios in new Java processes.
+Run `powershell -NoProfile -ExecutionPolicy Bypass -File .\run.ps1 -Test`. The Java 17 runner compiles production and test sources with `--release 17 -Xlint:all`. The dependency-free harness prints `PASS`/`FAIL` for each named case, ends with `RESULT passed=N failed=M`, and exits nonzero on failure. It runs 28 cases (counted again on 2026-10-06: `RESULT passed=28 failed=0`). The runner compiles into the repo's `out/`, which is gitignored. To leave the working tree completely untouched, compile into a temporary folder instead:
 
-Six initial checks failed against the original source: a returned account could mutate service balance, constructor input remained shared, duplicate account IDs were accepted, orphan transactions were accepted, sub-cent deposits were silently rounded, and negative model balances were allowed. These failures describe behavior, not the number of getters or classes in the implementation.
+```powershell
+$out = Join-Path $env:TEMP 'j3-classes'
+javac -encoding UTF-8 --release 17 -d $out (Get-ChildItem -Recurse src,test -Filter *.java | ForEach-Object FullName)
+java -cp $out bankapp.RegressionTests
+```
+
+The delivery also ran seven CLI scenarios in separate Java processes. That orchestration script is not in this repository. The runnable CLI checks you do have are in [05-PRACTICE](05-PRACTICE.md).
+
+Historical record (from the original delivery; the repo has a single commit, so you cannot re-run it here): six initial checks failed against the original source: a returned account could mutate service balance, constructor input remained shared, duplicate account IDs were accepted, orphan transactions were accepted, sub-cent deposits were silently rounded, and negative model balances were allowed. These failures describe behavior, not the number of getters or classes in the implementation.
 
 The ownership test deliberately calls a valid mutator on a returned account and then rereads the authoritative service state. Merely comparing object references would be weaker: it would prove different objects, but not necessarily that every relevant nested value was isolated. The suite repeats the check through list, creation, saving, and snapshot access paths because each is a possible escape route.
 
@@ -18,9 +26,9 @@ A useful debugger sequence is:
 4. Break before `Files.move` and compare the old destination with the temporary sibling.
 5. Restart the process and inspect `loadSnapshot`, not the old in-memory object.
 
-To investigate corruption, work on a copied learning directory. Remove the footer from its snapshot and start the CLI. It should report a load error before displaying the welcome menu. Compare the file hash before and after; startup must not rewrite the rejected file. The [trace lab](07-TRACE-LAB.md) provides a step-by-step manual version.
+To investigate corruption, work on a copied learning directory. Remove the footer from its snapshot and start the CLI. It should report a load error before displaying the welcome menu. Compare the file hash before and after; startup must not rewrite the rejected file. Also check `$LASTEXITCODE`: it is currently `0`, because `main` swallows the `IOException` (`App.java:34-40`). That gap is what practice exercise 1 fixes. The [trace lab](07-TRACE-LAB.md) provides a step-by-step manual version.
 
-Keep the test scope honest. No browser, HTTP routing, database rollback, request retry, or multi-process lock is verified here. The compiler required reviewed full-access execution in this environment because restricted `--release` compilation could not close resources. That successful compilation and all test results are recorded centrally; a tooling error should never be counted as an application test pass.
+Keep the test scope honest. No browser, HTTP routing, database rollback, request retry, or multi-process lock is verified here. A tooling error, such as a compiler that fails to start, is never an application test pass. Count only a run that ends with a `RESULT` line.
 
 ## The competing-withdrawal case
 

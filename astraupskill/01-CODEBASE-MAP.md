@@ -1,6 +1,6 @@
 # Follow an operation from menu input to snapshot replacement
 
-[App.java](../src/bankapp/App.java) constructs `FileStorage`, calls `loadSnapshot`, and initializes `BankService` from the returned accounts and transactions. Startup must finish loading before the menu appears. A storage error is reported by `main`; the application does not recover by silently replacing the dataset with an empty one.
+[App.java](../src/bankapp/App.java) constructs `FileStorage`, calls `loadSnapshot`, and initializes `BankService` from the returned accounts and transactions. Startup must finish loading before the menu appears. A storage error is reported by `main` (`App.java:34-40`), and the application does not recover by silently replacing the dataset with an empty one. It does, however, print the message to stdout and return normally, so the process exit code is still 0 (practice exercise 1).
 
 The menu is a transport adapter. It gathers strings, parses decimal input, calls a service operation, saves the resulting snapshot, and only then prints the operation's success message. Menu 8 renames a holder. Menu 9 asks for confirmation and invokes restricted deletion. EOF is handled without treating an incomplete prompt sequence as a completed command. A save failure exits the CLI through its existing IOException path rather than allowing more operations to continue on an unsaved state.
 
@@ -13,5 +13,21 @@ Trace a transfer in this order: require distinct existing accounts, normalize th
 [BankSnapshot.java](../src/bankapp/model/BankSnapshot.java) groups both collections. Its constructor copies account objects, and its account accessor returns fresh copies again. The transaction list is immutable because transaction objects themselves expose no mutation. This extra copy boundary prevents a caller from changing a previously captured snapshot before or after another component receives it.
 
 [FileStorage.java](../src/bankapp/storage/FileStorage.java) is the format and filesystem adapter. It reads either the authoritative versioned snapshot or, when that file is absent, the complete legacy pair. It validates loaded records through the service's constructor, rejecting duplicate IDs and references to missing accounts. It writes header, account records, transaction records, and an `END` footer containing both counts to a temporary sibling, then atomically replaces the destination.
+
+## Line anchors
+
+| What | Where |
+|---|---|
+| Menu dispatch; only `IllegalArgumentException`/`IllegalStateException` are caught per command | `src/bankapp/App.java:54-72` |
+| EOF handler that saves and exits | `App.java:74-76` |
+| Amount parsing (`new BigDecimal(text)`) | `App.java:224-233` |
+| Every save goes through one method | `App.java:235-237` |
+| Load-time validation (duplicates, missing references) | `src/bankapp/service/BankService.java:27-42` |
+| Transfer critical section | `BankService.java:107-147` |
+| Restricted delete rule | `BankService.java:188-195` |
+| Two-decimal rule (`RoundingMode.UNNECESSARY`) | `src/bankapp/model/Money.java:9` |
+| Header, record loop, footer check, legacy branch | `src/bankapp/storage/FileStorage.java:16`, `24-55` |
+| Validate, serialize, temp file, atomic move | `FileStorage.java:73-85` |
+| Escape and strict split | `FileStorage.java:101-119` |
 
 The [regression harness](../test/bankapp/RegressionTests.java) uses direct service calls, an executor for competing commands, and real temporary files. Start with `returned account cannot change service balance`, then `competing withdrawals cannot overdraw one service`, then `legacy migration retains original files and makes snapshot authoritative`. Together they show ownership, in-process concurrency, and durable format transition without requiring a framework.

@@ -25,5 +25,5 @@ Finally, a transfer's two records currently have distinct transaction IDs and re
 
 ## Glossary
 
-*Money*: an amount with an enforced scale, never a float. *Detached copy*: what callers receive; changing it does not change the account. *Transfer pair*: the debit and the credit that must both exist or neither. *Snapshot*: the whole state written to one file. *Commit before publish*: save first, then update memory or report success. *Stale write*: a save based on a baseline storage has moved past. *Correlation id*: the shared id on both halves of a transfer (exercise 1).
+*Money*: an amount with an enforced scale, never a float. *Detached copy*: what callers receive; changing it does not change the account. *Transfer pair*: the debit and the credit that must both exist or neither. *Snapshot*: the whole state written to one file. *Commit before publish*: save first, then update memory or report success. This CLI does it the other way round: memory changes first and the save follows. The CLI only gets away with that because a failed save ends the process (exercise 6). *Stale write*: a save based on a version of the file that another writer has since replaced. This app has no stale-write detection (exercise 3). *Correlation id*: the shared id on both halves of a transfer (exercise 4).
 
